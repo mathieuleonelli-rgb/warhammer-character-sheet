@@ -19,6 +19,11 @@ Block `blkl87wpQUxh5Ixf9`, base `appZOKVaWkqRS7FsL`. Data-layer design and decis
 - Colours come from CSS variables in `style.css` (light parchment / dark), so dark mode is automatic.
 - UI text is in French.
 
+## Environment gotchas
+- Stop any running `block run` before `block release` (the release wipes `.tmp/`, and the dev server then fails with "Could not resolve …/.tmp/index.js").
+- On 1 Oct 2026 a release reported success but the element still said "no releases yet"; a second `block release` from the user's terminal fixed it.
+- The PAT must cover this base's workspace, otherwise release fails with `airtableApiBlockNotFound`.
+
 ## Working preferences
 - Don't auto-restart `block run` after a release.
 - Explain git/CLI steps in plain language.
