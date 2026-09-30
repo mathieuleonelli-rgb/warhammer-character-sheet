@@ -9,7 +9,7 @@ export function Card({title, actions, children, className = ''}) {
                     {actions && <div className="flex items-center gap-1">{actions}</div>}
                 </header>
             )}
-            <div className="p-3">{children}</div>
+            <div className="overflow-x-auto p-3">{children}</div>
         </section>
     );
 }
@@ -268,5 +268,33 @@ export function ConfirmBtn({onConfirm, disabled, title = 'Supprimer', children =
         >
             {armed ? 'Confirmer ?' : children}
         </Btn>
+    );
+}
+
+// Character portrait; initials in a shield when there is no photo.
+export function Portrait({url, name, size = 56, onOpen, className = ''}) {
+    const initials = (name || '?')
+        .split(/\s+/)
+        .map(w => w[0])
+        .join('')
+        .slice(0, 2)
+        .toUpperCase();
+    const inner = url ? (
+        <img src={url} alt={name} className="h-full w-full object-cover" draggable={false} />
+    ) : (
+        <span className="font-sheet font-bold text-[var(--accent)]" style={{fontSize: size * 0.36}}>
+            {initials}
+        </span>
+    );
+    const cls = `flex shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-[var(--accent)] bg-[var(--accent-soft)] ${className}`;
+    const style = {width: size, height: size};
+    return onOpen ? (
+        <button type="button" onClick={onOpen} className={cls} style={style} title={url ? 'Ouvrir la fiche' : 'Ajouter une photo dans la fiche'}>
+            {inner}
+        </button>
+    ) : (
+        <div className={cls} style={style}>
+            {inner}
+        </div>
     );
 }

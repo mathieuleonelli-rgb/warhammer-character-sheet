@@ -16,7 +16,8 @@ It replaces the two-page PDF sheet for the whole party and the GM: pick a charac
 | `frontend/context.js` | Shared context passed to every sheet component |
 | `frontend/sheet.js` | Page 1 (identity, characteristics, skills, talents, ambitions), page 2 (armour, weapons, possessions, wounds, conditions, corruption, spells, money), journals |
 | `frontend/actions.js` | Play bar and the action dialogs (advance, gain XP, money, item, condition, critical wound, spell) |
-| `frontend/ui.js` | Shared components and the setup banner |
+| `frontend/combat.js` | Combat mode for phones: the ⚔ button, its transition and the combat screen |
+| `frontend/ui.js` | Shared components, portrait and the setup banner |
 
 ## First-time setup on a new machine
 

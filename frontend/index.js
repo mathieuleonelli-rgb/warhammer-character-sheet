@@ -1,11 +1,12 @@
 import {expandRecord, initializeBlock, useCustomProperties, useRecords} from '@airtable/blocks/interface/ui';
-import {useCallback, useEffect, useMemo, useState} from 'react';
+import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import './style.css';
 import {AddConditionDialog, AddCritDialog, AddItemDialog, AddSpellDialog, AdvanceDialog, GainXpDialog, MoneyDialog, PlayBar} from './actions';
+import {CallToArms, CombatButton, CombatMode} from './combat';
 import {SheetContext} from './context';
 import {FIELDS, TABLES, findMissingFields, makeWriter, resolveFields, str, useCharacterModel} from './data';
 import {Journals, PageOne, PageTwo} from './sheet';
-import {SetupBanner, inputCls} from './ui';
+import {Portrait, SetupBanner, inputCls} from './ui';
 
 // One table picker per table, defaulted by exact name so it works on first load.
 function getCustomProperties(base) {
@@ -145,76 +146,117 @@ function Sheet({tables}) {
         return () => clearTimeout(t);
     }, [error]);
 
+    // Combat mode: the call-to-arms overlay plays, the combat screen mounts under it mid-way.
+    const [combat, setCombat] = useState(false);
+    const [intro, setIntro] = useState(false);
+    const [leaving, setLeaving] = useState(false);
+    const timers = useRef([]);
+    useEffect(() => () => timers.current.forEach(clearTimeout), []);
+    const later = (fn, ms) => timers.current.push(setTimeout(fn, ms));
+    const enterCombat = () => {
+        setIntro(true);
+        try {
+            window.navigator.vibrate?.([40, 60, 110]);
+        } catch {
+            // no vibration support
+        }
+        later(() => setCombat(true), 420);
+        later(() => setIntro(false), 1450);
+    };
+    const exitCombat = () => {
+        setLeaving(true);
+        later(() => {
+            setCombat(false);
+            setLeaving(false);
+        }, 280);
+    };
+
     const ctx = useMemo(() => ({m, w, run, open, records, fields}), [m, w, run, open, records, fields]);
+
+    const errorToast = error && (
+        <div className="fixed inset-x-3 top-3 z-[70] mx-auto flex max-w-xl items-start justify-between gap-3 rounded-md border border-[var(--accent)] bg-[var(--accent-soft)] px-3 py-2 text-sm text-[var(--ink)] shadow-lg">
+            <span>{error}</span>
+            <button type="button" className="hover:underline" onClick={() => setError(null)}>
+                OK
+            </button>
+        </div>
+    );
+    const dialogEl = Dialog && m && <Dialog key={`${dialog}-${m.id}`} onClose={() => setDialog(null)} />;
 
     return (
         <Shell>
-            <div className="mx-auto max-w-7xl space-y-3 p-3 sm:p-4">
-                <header className="flex flex-wrap items-end justify-between gap-3">
-                    <div className="min-w-0">
-                        <div className="text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">Warhammer Fantasy Roleplay</div>
-                        <h1 className="truncate font-sheet text-3xl font-bold text-[var(--accent)]">{m ? m.name : 'Aucun personnage'}</h1>
-                        {m && (
-                            <div className="text-sm text-[var(--muted)]">
-                                {[m.race.map(r => r.name).join(', '), m.carriere, m.niveau.map(n => n.name).join(', '), m.statut]
-                                    .filter(Boolean)
-                                    .join(' · ')}
+            {errorToast}
+            {m && combat && (
+                <SheetContext.Provider value={ctx}>
+                    <CombatMode onExit={exitCombat} onDialog={setDialog} leaving={leaving}>
+                        {dialogEl}
+                    </CombatMode>
+                </SheetContext.Provider>
+            )}
+            {intro && m && <CallToArms name={m.name} />}
+            {!combat && (
+                <div className="mx-auto max-w-7xl space-y-3 p-3 pb-24 sm:p-4 sm:pb-24">
+                    <header className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-3">
+                            {m && <Portrait url={m.photo} name={m.name} size={60} onOpen={open('persos', m.id)} />}
+                            <div className="min-w-0">
+                                <div className="text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">Warhammer Fantasy Roleplay</div>
+                                <h1 className="truncate font-sheet text-3xl font-bold text-[var(--accent)]">{m ? m.name : 'Aucun personnage'}</h1>
+                                {m && (
+                                    <div className="text-sm text-[var(--muted)]">
+                                        {[m.race.map(r => r.name).join(', '), m.carriere, m.niveau.map(n => n.name).join(', '), m.statut]
+                                            .filter(Boolean)
+                                            .join(' · ')}
+                                    </div>
+                                )}
                             </div>
-                        )}
-                    </div>
-                    <label className="flex items-center gap-2 text-sm">
-                        <span className="text-[var(--muted)]">Personnage</span>
-                        <select className={`${inputCls} w-56`} value={activeId ?? ''} onChange={e => selectChar(e.target.value)}>
-                            {sortedPersos.map(p => {
-                                const joueur = str(p, fields.persos.joueur);
-                                return (
-                                    <option key={p.id} value={p.id}>
-                                        {str(p, fields.persos.name) || p.name}
-                                        {joueur ? ` — ${joueur}` : ' — PNJ'}
-                                    </option>
-                                );
-                            })}
-                        </select>
-                    </label>
-                </header>
+                        </div>
+                        <label className="flex w-full items-center gap-2 text-sm sm:w-auto">
+                            <span className="text-[var(--muted)]">Personnage</span>
+                            <select className={`${inputCls} flex-1 sm:w-56`} value={activeId ?? ''} onChange={e => selectChar(e.target.value)}>
+                                {sortedPersos.map(p => {
+                                    const joueur = str(p, fields.persos.joueur);
+                                    return (
+                                        <option key={p.id} value={p.id}>
+                                            {str(p, fields.persos.name) || p.name}
+                                            {joueur ? ` — ${joueur}` : ' — PNJ'}
+                                        </option>
+                                    );
+                                })}
+                            </select>
+                        </label>
+                    </header>
 
-                <SetupBanner missingFields={missingFields} noExpand={noExpand} />
+                    <SetupBanner missingFields={missingFields} noExpand={noExpand} />
 
-                {error && (
-                    <div className="flex items-start justify-between gap-3 rounded-md border border-[var(--accent)] bg-[var(--accent-soft)] px-3 py-2 text-sm">
-                        <span>{error}</span>
-                        <button type="button" className="hover:underline" onClick={() => setError(null)}>
-                            OK
-                        </button>
-                    </div>
-                )}
-
-                {!m ? (
-                    <p className="text-[var(--muted)]">Ajoutez un personnage dans la table {tables.persos.name}.</p>
-                ) : (
-                    <SheetContext.Provider value={ctx}>
-                        <PlayBar onDialog={setDialog} />
-                        <nav className="flex gap-1 border-b border-[var(--line)]">
-                            {TABS.map(([key, label]) => (
-                                <button
-                                    key={key}
-                                    type="button"
-                                    onClick={() => setTab(key)}
-                                    className={`-mb-px border-b-2 px-3 py-1.5 font-sheet text-[15px] font-semibold ${
-                                        tab === key ? 'border-[var(--accent)] text-[var(--accent)]' : 'border-transparent text-[var(--muted)] hover:text-[var(--ink)]'
-                                    }`}
-                                >
-                                    {label}
-                                </button>
-                            ))}
-                        </nav>
-                        {tab === 'page1' && <PageOne />}
-                        {tab === 'page2' && <PageTwo onDialog={setDialog} />}
-                        {tab === 'journals' && <Journals />}
-                        {Dialog && <Dialog key={`${dialog}-${m.id}`} onClose={() => setDialog(null)} />}
-                    </SheetContext.Provider>
-                )}
-            </div>
+                    {!m ? (
+                        <p className="text-[var(--muted)]">Ajoutez un personnage dans la table {tables.persos.name}.</p>
+                    ) : (
+                        <SheetContext.Provider value={ctx}>
+                            <PlayBar onDialog={setDialog} />
+                            <nav className="flex gap-1 overflow-x-auto border-b border-[var(--line)]">
+                                {TABS.map(([key, label]) => (
+                                    <button
+                                        key={key}
+                                        type="button"
+                                        onClick={() => setTab(key)}
+                                        className={`-mb-px shrink-0 border-b-2 px-3 py-1.5 font-sheet text-[15px] font-semibold ${
+                                            tab === key ? 'border-[var(--accent)] text-[var(--accent)]' : 'border-transparent text-[var(--muted)] hover:text-[var(--ink)]'
+                                        }`}
+                                    >
+                                        {label}
+                                    </button>
+                                ))}
+                            </nav>
+                            {tab === 'page1' && <PageOne />}
+                            {tab === 'page2' && <PageTwo onDialog={setDialog} />}
+                            {tab === 'journals' && <Journals />}
+                            {dialogEl}
+                            {!intro && <CombatButton onClick={enterCombat} />}
+                        </SheetContext.Provider>
+                    )}
+                </div>
+            )}
         </Shell>
     );
 }

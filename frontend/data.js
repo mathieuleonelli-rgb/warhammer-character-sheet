@@ -54,6 +54,7 @@ const charFields = Object.fromEntries(
 export const FIELDS = {
     persos: {
         name: 'Nom',
+        photo: 'Photo',
         joueur: 'Joueur',
         age: 'Âge',
         taille: 'Taille',
@@ -275,6 +276,13 @@ export function makeWriter(tables, fields) {
     };
 }
 
+// First attachment's large thumbnail (falls back to the file itself).
+function photoUrl(attachments) {
+    const a = Array.isArray(attachments) ? attachments[0] : null;
+    if (!a) return null;
+    return a.thumbnails?.large?.url ?? a.thumbnails?.full?.url ?? a.url ?? null;
+}
+
 const byLabel = (a, b) => a.label.localeCompare(b.label, 'fr');
 
 // Everything the sheet shows for one character, as plain objects.
@@ -448,6 +456,7 @@ export function useCharacterModel(records, fields, charId) {
             id: perso.id,
             record: perso,
             name: str(perso, P.name) || perso.name,
+            photo: photoUrl(val(perso, P.photo)),
             race: links(perso, P.race),
             niveau: links(perso, P.niveau),
             carriere: str(perso, P.carriere),

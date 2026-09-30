@@ -1,17 +1,25 @@
+import {FieldType} from '@airtable/blocks/interface/models';
 import {useSheet} from './context';
 import {LOCATIONS} from './data';
 import {Btn, Card, ConfirmBtn, Empty, InlineNumber, InlineText, Pills, RecordLink, Stat, Stepper, Td, Th} from './ui';
 
 // Inline-editable text field on the character record.
 function PersoText({field, multiline, className}) {
-    const {m, w, run} = useSheet();
+    const {m, w, run, fields} = useSheet();
     const canEdit = w.canUpdate('persos', field);
+    // Some identity fields (e.g. Âge) are number fields: convert before writing.
+    const isNumber = fields.persos[field]?.type === FieldType.NUMBER;
+    const toCell = v => {
+        if (!isNumber) return v || null;
+        const n = Number(v.replace(',', '.'));
+        return v.trim() === '' || !Number.isFinite(n) ? null : n;
+    };
     return (
         <InlineText
             value={m.text[field]}
             multiline={multiline}
             className={className}
-            onSave={canEdit ? v => run(() => w.update('persos', m.record, {[field]: v || null})) : null}
+            onSave={canEdit ? v => run(() => w.update('persos', m.record, {[field]: toCell(v)})) : null}
         />
     );
 }

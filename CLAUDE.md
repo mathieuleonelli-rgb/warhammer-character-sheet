@@ -10,7 +10,8 @@ Block `blkl87wpQUxh5Ixf9`, base `appZOKVaWkqRS7FsL`. Data-layer design and decis
 | `frontend/context.js` | `SheetContext`: `{m, w, run, open, records, fields}` |
 | `frontend/sheet.js` | Page 1 (identity, characteristics, skills, talents, ambitions), Page 2 (armour, weapons, possessions, wounds, conditions, corruption, spells, money), Journals |
 | `frontend/actions.js` | Play bar (damage, Chance, Détermination, XP) and every dialog (advance, gain XP, money, item, condition, crit, spell) |
-| `frontend/ui.js` | Presentational pieces, setup banner |
+| `frontend/combat.js` | Combat mode: floating ⚔ button, call-to-arms transition, full-screen mobile combat view (wounds + hit calculator, Avantage, Chance, Détermination, weapons, tests, conditions, crits) |
+| `frontend/ui.js` | Presentational pieces, portrait, setup banner |
 
 ## Conventions
 - All derived values come from Airtable formulas/rollups; the UI never recomputes them.
@@ -18,6 +19,9 @@ Block `blkl87wpQUxh5Ixf9`, base `appZOKVaWkqRS7FsL`. Data-layer design and decis
 - Buying an advance creates the Journal XP row first as a draft so Airtable computes `Coût suggéré`; confirm then bumps Aug / Nbre pris, cancel deletes the draft (and any new skill/talent row it created).
 - Colours come from CSS variables in `style.css` (light parchment / dark), so dark mode is automatic.
 - UI text is in French.
+- Mainly used on phones during sessions: keep touch targets ≥ 48px in combat mode and check layouts at phone width.
+- Combat mode uses its own dark palette (`.combat` in `style.css`); animations respect `prefers-reduced-motion`.
+- The hit calculator applies damage − BE − PA with a minimum of 1 (rule from memory, to verify).
 
 ## Environment gotchas
 - Stop any running `block run` before `block release` (the release wipes `.tmp/`, and the dev server then fails with "Could not resolve …/.tmp/index.js").
